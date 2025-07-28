@@ -1,0 +1,21 @@
+[project]
+name = "db-mcp"
+version = "1.0.0"
+description = "Database MCP server for vector storage"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp==1.8.0",
+    "python-dotenv==1.0.0",
+    "asyncpg>=0.29.0",
+    "starlette>=0.37.0",
+    "uvicorn>=0.30.0",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["mcp_instance*", "server*", "src*", "tools*"]

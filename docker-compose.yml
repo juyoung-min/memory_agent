@@ -1,0 +1,122 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: postgres-vector
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: vector_db
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - /ai-cache/pgvector-data:/var/lib/postgresql/data
+      - ./server/mcp-db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  model-mcp:
+    build: 
+      context: ./server/mcp-model
+      dockerfile: Dockerfile
+    container_name: model-mcp
+    user: "${UID:-1000}:${GID:-1000}"
+    ports:
+      - "8091:8091"
+    environment:
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8091
+      - AI_INFERENCE_SERVER_URL=http://192.168.1.209:31888
+      - UV_NO_CACHE=1
+    volumes:
+      - ./sse_asgi_fix.py:/app/sse_asgi_fix.py:ro
+    command: ["uv", "run", "server_asgi_fixed.py", "--host", "0.0.0.0", "--port", "8091", "--log-level", "DEBUG"]
+
+  mcp-db:
+    build:
+      context: ./server/mcp-db
+      dockerfile: Dockerfile
+    container_name: mcp-db
+    user: "${UID:-1000}:${GID:-1000}"
+    ports:
+      - "8092:8092"
+    environment:
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8092
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=vector_db
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_SSL_MODE=prefer
+      - DB_MIN_CONNECTIONS=5
+      - DB_MAX_CONNECTIONS=20
+      - UV_NO_CACHE=1
+    volumes:
+      - ./sse_asgi_fix.py:/app/sse_asgi_fix.py:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["python", "server_asgi_fixed.py", "--host", "0.0.0.0", "--port", "8092", "--log-level", "DEBUG"]
+
+  mcp-rag:
+    build:
+      context: ./server/mcp-rag
+      dockerfile: Dockerfile
+    container_name: mcp-rag
+    user: "${UID:-1000}:${GID:-1000}"
+    ports:
+      - "8093:8093"
+    environment:
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8093
+      - MODEL_MCP_URL=http://model-mcp:8091/sse
+      - DB_MCP_URL=http://mcp-db:8092/sse
+      - DEFAULT_EMBEDDING_MODEL=bge-m3
+      - DEFAULT_LLM_MODEL=EXAONE-3.5-2.4B-Instruct
+      - DEFAULT_COLLECTION=memories
+      - CHUNK_SIZE=1000
+      - CHUNK_OVERLAP=200
+      - DEFAULT_SEARCH_LIMIT=10
+      - DEFAULT_SIMILARITY_THRESHOLD=0.7
+      - UV_NO_CACHE=1
+    volumes:
+      - ./sse_asgi_fix.py:/app/sse_asgi_fix.py:ro
+    depends_on:
+      - model-mcp
+      - mcp-db
+    command: ["python", "server_asgi_fixed.py", "--host", "0.0.0.0", "--port", "8093", "--log-level", "DEBUG"]
+
+  mcp-memory:
+    build:
+      context: ./server/mcp-memory
+      dockerfile: Dockerfile
+    container_name: mcp-memory
+    user: "${UID:-1000}:${GID:-1000}"
+    ports:
+      - "8094:8094"
+    environment:
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8094
+      - RAG_MCP_URL=http://mcp-rag:8093/sse
+      - DB_MCP_URL=http://mcp-db:8092/sse
+      - MODEL_MCP_URL=http://model-mcp:8091/sse
+      - MEMORY_AGENT_STORAGE_BACKEND=postgresql
+      - MEMORY_AGENT_ENABLE_INTELLIGENCE=true
+      - MEMORY_AGENT_IMPORTANCE_THRESHOLD=6.0
+      - UV_NO_CACHE=1
+    volumes:
+      - ./sse_asgi_fix.py:/app/sse_asgi_fix.py:ro
+    depends_on:
+      - mcp-rag
+      - model-mcp
+      - mcp-db
+    command: ["python", "server_asgi_fixed.py", "--host", "0.0.0.0", "--port", "8094", "--log-level", "DEBUG"]
+
+networks:
+  default:
+    name: mcp-network

@@ -1,0 +1,214 @@
+# Text Extraction Configuration
+# This file makes the text processor completely configurable
+
+entities:
+  person_name:
+    patterns:
+      - name: "korean_name_intro"
+        patterns:
+          - "저는\\s+([가-힣]{2,4})이고"
+          - "저는\\s+([가-힣]{2,4})입니다"
+          - "제\\s+이름은\\s+([가-힣]{2,4})"
+        pattern_type: "regex"
+        case_sensitive: false
+        
+      - name: "english_name_intro"
+        patterns:
+          - "I am\\s+([A-Za-z\\s]{2,30})"
+          - "My name is\\s+([A-Za-z\\s]{2,30})"
+          - "I'm\\s+([A-Za-z\\s]{2,30})"
+        pattern_type: "regex"
+        case_sensitive: false
+        
+    validation_rules:
+      min_length: 2
+      max_length: 30
+      exclude_words: ["that", "this", "것", "이것", "그것", "하나", "둘"]
+      must_not_match: "\\d"  # No numbers in names
+      
+    post_processing:
+      - "trim"
+      - "remove_particles"
+      - "title_case"
+
+  technology:
+    patterns:
+      - name: "programming_languages"
+        patterns:
+          - "python"
+          - "java"
+          - "javascript"
+          - "typescript"
+          - "go"
+          - "rust"
+          - "c++"
+          - "파이썬"
+          - "자바"
+          - "자바스크립트"
+        pattern_type: "keyword"
+        case_sensitive: false
+        
+      - name: "frameworks_libraries"
+        patterns:
+          - "react"
+          - "vue"
+          - "angular"
+          - "django"
+          - "flask"
+          - "fastapi"
+          - "spring"
+          - "리액트"
+          - "뷰"
+          - "장고"
+        pattern_type: "keyword"
+        case_sensitive: false
+        
+      - name: "infrastructure"
+        patterns:
+          - "docker"
+          - "kubernetes"
+          - "aws"
+          - "azure"
+          - "gcp"
+          - "postgresql"
+          - "mongodb"
+          - "redis"
+          - "도커"
+          - "쿠버네티스"
+        pattern_type: "keyword"
+        case_sensitive: false
+        
+    validation_rules:
+      min_length: 2
+      max_length: 20
+
+  job_title:
+    patterns:
+      - name: "software_roles"
+        patterns:
+          - "developer"
+          - "engineer"
+          - "programmer"
+          - "architect"
+          - "tech lead"
+          - "개발자"
+          - "엔지니어"
+          - "프로그래머"
+          - "아키텍트"
+        pattern_type: "keyword"
+        case_sensitive: false
+        
+      - name: "management_roles"
+        patterns:
+          - "manager"
+          - "director"
+          - "cto"
+          - "ceo"
+          - "team lead"
+          - "매니저"
+          - "디렉터"
+          - "팀장"
+        pattern_type: "keyword"
+        case_sensitive: false
+        
+    validation_rules:
+      min_length: 3
+      max_length: 30
+
+  hobby:
+    patterns:
+      - name: "physical_activities"
+        patterns:
+          - "hiking"
+          - "running"
+          - "swimming"
+          - "cycling"
+          - "yoga"
+          - "등산"
+          - "달리기"
+          - "수영"
+          - "자전거"
+          - "요가"
+        pattern_type: "keyword"
+        case_sensitive: false
+        
+      - name: "intellectual_activities"
+        patterns:
+          - "reading"
+          - "writing"
+          - "painting"
+          - "photography"
+          - "독서"
+          - "글쓰기"
+          - "그림"
+          - "사진"
+        pattern_type: "keyword"
+        case_sensitive: false
+        
+      - name: "hobby_patterns"
+        patterns:
+          - "취미로\\s+([가-힣\\s]+)을"
+          - "좋아하는\\s+([가-힣\\s]+)은"
+          - "즐겨\\s+([가-힣\\s]+)을"
+        pattern_type: "regex"
+        case_sensitive: false
+
+  company:
+    patterns:
+      - name: "company_mention"
+        patterns:
+          - "([A-Za-z가-힣\\s]+)에서\\s+(?:일|근무|개발)"
+          - "([A-Za-z가-힣\\s]+)\\s+회사"
+          - "저희\\s+([A-Za-z가-힣\\s]+)"
+        pattern_type: "regex"
+        case_sensitive: false
+        
+    validation_rules:
+      min_length: 2
+      max_length: 50
+      exclude_words: ["그", "이", "저", "회사"]
+
+  goal:
+    patterns:
+      - name: "goal_expressions"
+        patterns:
+          - "목표는\\s+([^.!?]+)"
+          - "계획은\\s+([^.!?]+)"
+          - "하고싶은\\s+([^.!?]+)"
+          - "되고싶은\\s+([^.!?]+)"
+          - "목표로\\s+([^.!?]+)"
+        pattern_type: "regex"
+        case_sensitive: false
+        
+    validation_rules:
+      min_length: 5
+      max_length: 200
+
+preprocessing:
+  normalize_whitespace: true
+  remove_special_chars: false
+  lowercase_for_matching: true
+
+language_specific:
+  korean:
+    particle_removal: ["이고", "입니다", "이에요", "예요", "을", "를", "이", "가"]
+    honorific_detection: true
+    
+  english:
+    stem_words: false
+    remove_stopwords: false
+
+# Confidence thresholds for different entity types
+confidence_thresholds:
+  person_name: 0.8
+  technology: 0.7
+  job_title: 0.7
+  hobby: 0.6
+  company: 0.8
+  goal: 0.7
+
+# Custom entity types can be added here
+custom_entities:
+  # Example: Add your own entity types
+  # project_name:
+  #   patterns: [...]
